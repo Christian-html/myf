@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Finances — Finance Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f2ec;
+    --surface: #ffffff;
+    --surface2: #f0ece3;
+    --ink: #1a1814;
+    --ink2: #5a5650;
+    --ink3: #9a9690;
+    --accent: #c8431a;
+    --accent2: #e8a020;
+    --teal: #1a7a6a;
+    --border: #ddd8ce;
+    --danger: #c8431a;
+    --success: #1a7a6a;
+    --radius: 4px;
+    --radius-lg: 8px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--ink);
+    color: #f5f2ec;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    letter-spacing: -0.3px;
+    color: #f5f2ec;
+  }
+  .logo span { color: var(--accent2); font-style: italic; }
+
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .btn-ghost {
+    background: transparent;
+    border-color: rgba(245,242,236,0.25);
+    color: #f5f2ec;
+  }
+  .btn-ghost:hover { background: rgba(245,242,236,0.08); }
+  .btn-accent {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn-accent:hover { background: #b03a15; }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+  .btn-outline {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--ink2);
+  }
+  .btn-outline:hover { border-color: var(--ink2); color: var(--ink); }
+
+  /* LAYOUT */
+  .app { display: flex; min-height: calc(100vh - 56px); }
+
+  /* SIDEBAR */
+  nav {
+    width: 200px;
+    min-width: 200px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .nav-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    padding: 0 20px 8px;
+    margin-top: 16px;
+  }
+  .nav-label:first-child { margin-top: 0; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--ink2);
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+    text-decoration: none;
+  }
+  .nav-item:hover { color: var(--ink); background: var(--bg); }
+  .nav-item.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: #fdf0ec;
+    font-weight: 500;
+  }
+  .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+
+  /* MAIN */
+  main {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* PAGE TITLES */
+  .page-header { margin-bottom: 28px; }
+  .page-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .page-subtitle { color: var(--ink2); font-size: 13px; margin-top: 4px; }
+
+  /* STAT CARDS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+  }
+  .stat-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink3);
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+  }
+  .stat-value.positive { color: var(--success); }
+  .stat-value.negative { color: var(--danger); }
+  .stat-sub { font-size: 11px; color: var(--ink3); margin-top: 4px; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    margin-bottom: 20px;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
+    color: var(--ink);
+  }
+
+  /* TABLES */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink3);
+    padding: 10px 0 10px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 10px; border-bottom: 1px solid var(--surface2); color: var(--ink); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  .amount-cell {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    text-align: right;
+  }
+  .amount-cell.expense { color: var(--danger); }
+  .amount-cell.income { color: var(--success); }
+
+  /* BADGES */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .badge-sub { background: #fdf0ec; color: #b03a15; border: 1px solid #f4c0ac; }
+  .badge-cat { background: var(--surface2); color: var(--ink2); border: 1px solid var(--border); }
+  .badge-income { background: #eaf5f2; color: #155f50; border: 1px solid #b0ddd6; }
+
+  /* CATEGORY CHIPS */
+  .cat-select {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink2);
+    cursor: pointer;
+  }
+  .cat-select:focus { outline: none; border-color: var(--accent); }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 48px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: #fdf8f5;
+  }
+  .upload-icon { font-size: 36px; margin-bottom: 12px; }
+  .upload-title { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 6px; }
+  .upload-hint { color: var(--ink2); font-size: 13px; }
+  .upload-hint strong { color: var(--accent); }
+
+  #file-input { display: none; }
+
+  /* COLUMN MAPPER */
+  .mapper-grid {
+    display: grid;
+    grid-template-columns: 1fr 40px 1fr;
+    gap: 8px 0;
+    align-items: center;
+    font-size: 13px;
+  }
+  .mapper-label { color: var(--ink2); font-weight: 500; }
+  .mapper-arrow { text-align: center; color: var(--ink3); }
+  select.mapper-select {
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  select.mapper-select:focus { outline: none; border-color: var(--accent); }
+
+  /* CHART WRAPPER */
+  .chart-wrap { position: relative; height: 260px; }
+
+  /* PROGRESS BARS */
+  .cat-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .cat-bar-label { width: 110px; font-size: 12px; color: var(--ink2); flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-bar-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.4s; }
+  .cat-bar-amount { width: 80px; text-align: right; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink2); flex-shrink: 0; }
+
+  /* SUB CARDS */
+  .sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .sub-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    position: relative;
+    transition: box-shadow 0.15s;
+  }
+  .sub-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .sub-card.flagged { border-left: 3px solid var(--accent2); }
+  .sub-name { font-weight: 500; font-size: 14px; margin-bottom: 2px; }
+  .sub-amount { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; color: var(--accent); margin: 8px 0 4px; }
+  .sub-freq { font-size: 11px; color: var(--ink3); }
+  .sub-actions { display: flex; gap: 6px; margin-top: 10px; }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center;
+    padding: 64px 32px;
+    color: var(--ink2);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--ink3); margin-bottom: 8px; }
+  .empty-hint { font-size: 13px; color: var(--ink3); }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--ink);
+    color: #f5f2ec;
+    padding: 12px 18px;
+    border-radius: var(--radius-lg);
+    font-size: 13px;
+    z-index: 999;
+    display: none;
+    animation: slideUp 0.2s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* MONTH FILTER */
+  .filter-row { display: flex; gap: 8px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .month-chip {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .month-chip.active { background: var(--ink); color: #f5f2ec; border-color: var(--ink); }
+  .month-chip:hover:not(.active) { border-color: var(--ink2); }
+
+  /* MODAL */
+  .modal-bg {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(26,24,20,0.55);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    width: 520px;
+    max-width: 94vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+  }
+  .modal-head {
+    padding: 20px 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .modal-title { font-family: 'DM Serif Display', serif; font-size: 20px; }
+  .modal-body { padding: 16px 24px 24px; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--ink3); padding: 0; line-height: 1; }
+  .modal-close:hover { color: var(--ink); }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink2); margin-bottom: 6px; }
+  .form-input {
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .form-input:focus { outline: none; border-color: var(--accent); }
+
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+  /* SECTION DIVIDER */
+  .section-title {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink3);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* TABS */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .tab {
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--ink2);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.12s;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  input[type="checkbox"] { accent-color: var(--accent); }
+
+  @media (max-width: 700px) {
+    nav { display: none; }
+    main { padding: 16px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">My <span>Finances</span></div>
+  <div class="header-actions">
+    <button class="btn btn-ghost btn-sm" onclick="openAddModal()">+ Add transaction</button>
+    <button class="btn btn-accent btn-sm" onclick="navigate('import')">↑ Import CSV</button>
+  </div>
+</header>
+
+<div class="app">
+  <nav>
+    <div class="nav-label">Overview</div>
+    <a class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+      <span class="nav-icon">◈</span> Dashboard
+    </a>
+    <a class="nav-item" data-page="subscriptions" onclick="navigate('subscriptions')">
+      <span class="nav-icon">↺</span> Subscriptions
+    </a>
+    <div class="nav-label">Data</div>
+    <a class="nav-item" data-page="transactions" onclick="navigate('transactions')">
+      <span class="nav-icon">≡</span> Transactions
+    </a>
+    <a class="nav-item" data-page="import" onclick="navigate('import')">
+      <span class="nav-icon">↑</span> Import
+    </a>
+  </nav>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Your financial overview</p>
+      </div>
+
+      <div class="filter-row" id="month-filters"></div>
+
+      <div class="stats-grid" id="dash-stats">
+        <div class="stat-card"><div class="stat-label">Total income</div><div class="stat-value positive" id="stat-income">Bs 0</div></div>
+        <div class="stat-card"><div class="stat-label">Total expenses</div><div class="stat-value negative" id="stat-expenses">Bs 0</div></div>
+        <div class="stat-card"><div class="stat-label">Net balance</div><div class="stat-value" id="stat-balance">Bs 0</div></div>
+        <div class="stat-card"><div class="stat-label">Subscriptions / mo</div><div class="stat-value" id="stat-subs">Bs 0</div></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Expenses by category</span>
+          </div>
+          <div id="cat-bars"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Monthly trend</span>
+          </div>
+          <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <div class="card-header">
+          <span class="card-title">Recent transactions</span>
+          <button class="btn btn-outline btn-sm" onclick="navigate('transactions')">View all</button>
+        </div>
+        <div class="table-wrap" id="recent-txns"></div>
+      </div>
+    </div>
+
+    <!-- SUBSCRIPTIONS -->
+    <div id="page-subscriptions" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Subscriptions</h1>
+        <p class="page-subtitle" id="sub-subtitle">Auto-detected recurring charges</p>
+      </div>
+
+      <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-card"><div class="stat-label">Monthly total</div><div class="stat-value negative" id="sub-stat-monthly">Bs 0</div></div>
+        <div class="stat-card"><div class="stat-label">Yearly estimate</div><div class="stat-value" id="sub-stat-yearly">Bs 0</div></div>
+        <div class="stat-card"><div class="stat-label">Active subscriptions</div><div class="stat-value" id="sub-stat-count">0</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Detected subscriptions</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="openAddSubModal()">+ Add</button>
+            <button class="btn btn-outline btn-sm" onclick="detectSubscriptions()">↺ Re-scan</button>
+          </div>
+        </div>
+        <div id="sub-grid"></div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div id="page-transactions" class="page">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <h1 class="page-title">Transactions</h1>
+          <p class="page-subtitle" id="txn-count-label">All transactions</p>
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:6px;color:var(--danger);border-color:var(--danger)" onclick="clearAllTransactions()">Clear all</button>
+      </div>
+      <div class="filter-row">
+        <input class="form-input" style="width:220px;padding:6px 10px;font-size:13px" id="search-input" placeholder="Search…" oninput="renderTransactions()">
+        <select class="cat-select" id="cat-filter" onchange="renderTransactions()" style="padding:6px 10px">
+          <option value="">All categories</option>
+        </select>
+        <select class="cat-select" id="type-filter" onchange="renderTransactions()" style="padding:6px 10px">
+          <option value="">All types</option>
+          <option value="expense">Expenses</option>
+          <option value="income">Income</option>
+        </select>
+      </div>
+      <div class="card" style="padding:0">
+        <div class="table-wrap" id="txn-table"></div>
+      </div>
+    </div>
+
+    <!-- IMPORT -->
+    <div id="page-import" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Import data</h1>
+        <p class="page-subtitle">Upload a CSV or Excel file exported from your bank</p>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('upload')">Upload file</div>
+        <div class="tab" onclick="switchTab('manual')">Manual entry</div>
+      </div>
+
+      <div class="tab-panel active" id="tab-upload">
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondrop="handleDrop(event)" ondragover="e=>e.preventDefault()" ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')">
+          <div class="upload-icon">⬆</div>
+          <div class="upload-title">Drop your bank export here</div>
+          <div class="upload-hint">or click to browse · Accepts <strong>.csv</strong> and <strong>.xlsx</strong> files</div>
+        </div>
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" onchange="handleFileSelect(event)">
+
+        <div id="mapper-section" style="display:none; margin-top:24px;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Map columns</span>
+              <span style="font-size:12px;color:var(--ink3)" id="preview-info"></span>
+            </div>
+            <p style="font-size:13px;color:var(--ink2);margin-bottom:16px">Tell us which column in your file corresponds to each field:</p>
+            <div class="mapper-grid" id="mapper-grid"></div>
+            <div style="margin-top:20px;display:flex;gap:8px">
+              <button class="btn btn-accent" onclick="importData()">Import transactions</button>
+              <button class="btn btn-outline" onclick="resetImport()">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-manual">
+        <div class="card">
+          <div id="manual-form">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group">
+                <label class="form-label">Date</label>
+                <input type="date" class="form-input" id="m-date">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Description</label>
+                <input type="text" class="form-input" id="m-desc" placeholder="e.g. Netflix, Supermercado…">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Amount (Bs)</label>
+                <input type="number" class="form-input" id="m-amount" placeholder="0.00" step="0.01">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Type</label>
+                <select class="form-input" id="m-type">
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-input" id="m-cat">
+                  <option>Food & groceries</option>
+                  <option>Transport</option>
+                  <option>Entertainment</option>
+                  <option>Health</option>
+                  <option>Utilities</option>
+                  <option>Subscriptions</option>
+                  <option>Shopping</option>
+                  <option>Education</option>
+                  <option>Other</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-accent" onclick="addManualTransaction()" style="margin-top:8px">Add transaction</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ADD TRANSACTION MODAL -->
+<div class="modal-bg" id="add-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Add transaction</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" class="form-input" id="mod-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input type="text" class="form-input" id="mod-desc" placeholder="e.g. Netflix">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount (Bs)</label>
+          <input type="number" class="form-input" id="mod-amount" placeholder="0.00" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-input" id="mod-type">
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Category</label>
+          <select class="form-input" id="mod-cat">
+            <option>Food & groceries</option>
+            <option>Transport</option>
+            <option>Entertainment</option>
+            <option>Health</option>
+            <option>Utilities</option>
+            <option>Subscriptions</option>
+            <option>Shopping</option>
+            <option>Education</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-accent" onclick="addModalTransaction()">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ADD SUBSCRIPTION MODAL -->
+<div class="modal-bg" id="add-sub-modal" onclick="if(event.target===this)closeSubModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Add subscription</span>
+      <button class="modal-close" onclick="closeSubModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Name</label>
+          <input type="text" class="form-input" id="sub-name" placeholder="e.g. Netflix, Spotify…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount (Bs)</label>
+          <input type="number" class="form-input" id="sub-amount" placeholder="0.00" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Frequency</label>
+          <select class="form-input" id="sub-freq">
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+            <option value="quarterly">Quarterly</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Category</label>
+          <select class="form-input" id="sub-cat">
+            <option>Subscriptions</option>
+            <option>Entertainment</option>
+            <option>Health</option>
+            <option>Utilities</option>
+            <option>Education</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeSubModal()">Cancel</button>
+        <button class="btn btn-accent" onclick="saveNewSub()">Add subscription</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM CLEAR MODAL -->
+<div class="modal-bg" id="confirm-clear-modal" onclick="if(event.target===this)closeClearModal()">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head">
+      <span class="modal-title">Clear all transactions?</span>
+      <button class="modal-close" onclick="closeClearModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--ink2);font-size:14px;margin-bottom:20px">This will permanently delete all transactions and reset your account balance. This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeClearModal()">Cancel</button>
+        <button class="btn btn-accent" style="background:var(--danger);border-color:var(--danger)" onclick="confirmClear()">Yes, clear all</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let transactions = [];
+let subscriptions = [];
+let rawFileData = null;
+let rawHeaders = [];
+let currentMonth = 'all';
+let trendChart = null;
+let bankBalance = null; // actual balance from bank's Saldo column
+
+const CATEGORIES = ['Food & groceries','Transport','Entertainment','Health','Utilities','Subscriptions','Shopping','Education','Other'];
+const CAT_COLORS = ['#c8431a','#e8a020','#1a7a6a','#3a6abc','#9a4ab0','#c85878','#5a8a40','#6a5830','#8a8880'];
+const CURRENCY = 'Bs';
+
+// ── STORAGE ────────────────────────────────────────────────────────────────
+function save() {
+  try {
+    localStorage.setItem('mf_transactions', JSON.stringify(transactions));
+    localStorage.setItem('mf_subscriptions', JSON.stringify(subscriptions));
+    if (bankBalance !== null) localStorage.setItem('mf_bank_balance', bankBalance);
+  } catch(e) {}
+}
+function load() {
+  try {
+    const t = localStorage.getItem('mf_transactions');
+    const s = localStorage.getItem('mf_subscriptions');
+    const b = localStorage.getItem('mf_bank_balance');
+    if (t) transactions = JSON.parse(t);
+    if (s) subscriptions = JSON.parse(s);
+    if (b !== null) bankBalance = parseFloat(b);
+  } catch(e) {}
+}
+
+// ── NAVIGATION ─────────────────────────────────────────────────────────────
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'subscriptions') renderSubscriptions();
+  if (page === 'transactions') renderTransactions();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i === (tab==='upload'?0:1)));
+  document.querySelectorAll('.tab-panel').forEach((p,i) => p.classList.toggle('active', i === (tab==='upload'?0:1)));
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 2800);
+}
+
+// ── FORMAT ─────────────────────────────────────────────────────────────────
+function fmt(n) {
+  return CURRENCY + ' ' + Math.abs(n).toLocaleString('es-BO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+// ── MONTH FILTER ──────────────────────────────────────────────────────────
+function getMonths() {
+  const months = new Set();
+  transactions.forEach(t => { if(t.date) months.add(t.date.slice(0,7)); });
+  return Array.from(months).sort().reverse();
+}
+
+function renderMonthFilters() {
+  const months = getMonths();
+  const el = document.getElementById('month-filters');
+  let html = `<span class="month-chip ${currentMonth==='all'?'active':''}" onclick="setMonth('all')">All time</span>`;
+  months.slice(0,6).forEach(m => {
+    const [y,mo] = m.split('-');
+    const label = new Date(+y, +mo-1).toLocaleDateString('en-US', {month:'short', year:'numeric'});
+    html += `<span class="month-chip ${currentMonth===m?'active':''}" onclick="setMonth('${m}')">${label}</span>`;
+  });
+  el.innerHTML = html;
+}
+
+function setMonth(m) {
+  currentMonth = m;
+  renderDashboard();
+}
+
+function filteredTxns() {
+  if (currentMonth === 'all') return transactions;
+  return transactions.filter(t => t.date && t.date.startsWith(currentMonth));
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────
+function renderDashboard() {
+  renderMonthFilters();
+  const txns = filteredTxns();
+  const income = txns.filter(t => t.type==='income').reduce((s,t) => s+t.amount, 0);
+  const expenses = txns.filter(t => t.type==='expense').reduce((s,t) => s+t.amount, 0);
+  const balance = income - expenses;
+  const subMonthly = subscriptions.filter(s=>s.active).reduce((sum,s) => sum+(s.frequency==='yearly'?s.amount/12:s.amount),0);
+
+  document.getElementById('stat-income').textContent = fmt(income);
+  document.getElementById('stat-expenses').textContent = fmt(expenses);
+  const balEl = document.getElementById('stat-balance');
+  // If we have a real balance from the bank's Saldo column, show that;
+  // otherwise fall back to calculated income - expenses.
+  const displayBalance = (bankBalance !== null && currentMonth === 'all') ? bankBalance : balance;
+  balEl.textContent = (displayBalance >= 0 ? '' : '-') + fmt(displayBalance);
+  balEl.className = 'stat-value ' + (displayBalance >= 0 ? 'positive' : 'negative');
+  // Update the card label to make clear what's shown
+  const balLabel = balEl.previousElementSibling;
+  if (balLabel) balLabel.textContent = (bankBalance !== null && currentMonth === 'all') ? 'Account balance' : 'Net balance';
+  document.getElementById('stat-subs').textContent = fmt(subMonthly);
+
+  // Category bars
+  const catTotals = {};
+  txns.filter(t => t.type==='expense').forEach(t => {
+    const c = t.category || 'Other';
+    catTotals[c] = (catTotals[c] || 0) + t.amount;
+  });
+  const sorted = Object.entries(catTotals).sort((a,b) => b[1]-a[1]);
+  const maxCat = sorted[0]?.[1] || 1;
+  let barsHtml = '';
+  sorted.forEach(([cat, amt], i) => {
+    const pct = (amt / maxCat * 100).toFixed(1);
+    const color = CAT_COLORS[CATEGORIES.indexOf(cat)] || '#888';
+    barsHtml += `<div class="cat-bar-row">
+      <div class="cat-bar-label" title="${cat}">${cat}</div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="cat-bar-amount">${fmt(amt)}</div>
+    </div>`;
+  });
+  document.getElementById('cat-bars').innerHTML = barsHtml || '<p style="color:var(--ink3);font-size:13px;padding:8px 0">No expense data yet</p>';
+
+  // Trend chart
+  renderTrendChart();
+
+  // Recent transactions
+  const recent = [...transactions].sort((a,b) => txnTs(b) - txnTs(a)).slice(0,6);
+  document.getElementById('recent-txns').innerHTML = buildTxnTable(recent);
+}
+
+function renderTrendChart() {
+  const months = getMonths().slice(0,6).reverse();
+  if (!months.length) {
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
+    return;
+  }
+  const incomeData = months.map(m => transactions.filter(t=>t.type==='income'&&t.date?.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const expData = months.map(m => transactions.filter(t=>t.type==='expense'&&t.date?.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const labels = months.map(m => { const [y,mo]=m.split('-'); return new Date(+y,+mo-1).toLocaleDateString('en-US',{month:'short'}); });
+
+  if (trendChart) trendChart.destroy();
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  trendChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Income', data: incomeData, backgroundColor: '#1a7a6a22', borderColor: '#1a7a6a', borderWidth: 1.5, borderRadius: 3 },
+        { label: 'Expenses', data: expData, backgroundColor: '#c8431a22', borderColor: '#c8431a', borderWidth: 1.5, borderRadius: 3 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 11 }, boxWidth: 10 } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'DM Mono', size: 11 } } },
+        y: { grid: { color: '#ddd8ce55' }, ticks: { font: { family: 'DM Mono', size: 11 }, callback: v => 'Bs '+v.toLocaleString() } }
+      }
+    }
+  });
+}
+
+// ── SUBSCRIPTIONS ─────────────────────────────────────────────────────────
+function detectSubscriptions() {
+  const groups = {};
+  transactions.filter(t => t.type==='expense').forEach(t => {
+    const key = t.description?.toLowerCase().trim() || '';
+    if (!key) return;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(t);
+  });
+
+  const detected = [];
+  Object.entries(groups).forEach(([key, txns]) => {
+    if (txns.length < 2) return;
+    const amounts = txns.map(t => t.amount);
+    const mostCommon = mode(amounts);
+    if (!mostCommon) return;
+    const consistent = amounts.filter(a => Math.abs(a - mostCommon) < 0.5).length / amounts.length;
+    if (consistent < 0.6) return;
+
+    // Check periodicity
+    const dates = txns.map(t => new Date(t.date)).filter(d => !isNaN(d)).sort((a,b) => a-b);
+    if (dates.length < 2) return;
+    const gaps = [];
+    for (let i=1;i<dates.length;i++) gaps.push((dates[i]-dates[i-1])/(1000*60*60*24));
+    const avgGap = gaps.reduce((s,g)=>s+g,0)/gaps.length;
+
+    let frequency = null;
+    if (avgGap >= 25 && avgGap <= 35) frequency = 'monthly';
+    else if (avgGap >= 340 && avgGap <= 390) frequency = 'yearly';
+    else if (avgGap >= 85 && avgGap <= 100) frequency = 'quarterly';
+    if (!frequency) return;
+
+    // Check if already exists
+    const existing = subscriptions.find(s => s.name.toLowerCase() === key);
+    if (!existing) {
+      detected.push({
+        id: Date.now() + Math.random(),
+        name: txns[0].description || key,
+        amount: mostCommon,
+        frequency,
+        active: true,
+        category: txns[0].category || 'Subscriptions',
+        lastCharge: dates[dates.length-1].toISOString().slice(0,10),
+        auto: true
+      });
+    }
+  });
+
+  if (detected.length) {
+    detected.forEach(d => subscriptions.push(d));
+    save();
+    toast(`Detected ${detected.length} subscription(s)`);
+  } else {
+    toast('No new subscriptions found');
+  }
+  renderSubscriptions();
+}
+
+function mode(arr) {
+  const freq = {};
+  arr.forEach(v => { const k = v.toFixed(2); freq[k] = (freq[k]||0)+1; });
+  let best = null, bestCount = 0;
+  Object.entries(freq).forEach(([v,c]) => { if(c > bestCount) { bestCount = c; best = parseFloat(v); } });
+  return bestCount >= 2 ? best : null;
+}
+
+function renderSubscriptions() {
+  const active = subscriptions.filter(s => s.active);
+  const monthly = active.reduce((sum,s) => sum+(s.frequency==='yearly'?s.amount/12:s.frequency==='quarterly'?s.amount/3:s.amount),0);
+
+  document.getElementById('sub-stat-monthly').textContent = fmt(monthly);
+  document.getElementById('sub-stat-yearly').textContent = fmt(monthly*12);
+  document.getElementById('sub-stat-count').textContent = active.length;
+  document.getElementById('sub-subtitle').textContent = `${subscriptions.length} detected — ${active.length} active`;
+
+  if (!subscriptions.length) {
+    document.getElementById('sub-grid').innerHTML = `<div class="empty"><div class="empty-icon">↺</div><div class="empty-title">No subscriptions yet</div><div class="empty-hint">Import transactions and click Re-scan to detect recurring charges</div></div>`;
+    return;
+  }
+
+  let html = '<div class="sub-grid">';
+  subscriptions.forEach((s, i) => {
+    const monthlyCost = s.frequency==='yearly' ? s.amount/12 : s.frequency==='quarterly' ? s.amount/3 : s.amount;
+    html += `<div class="sub-card ${s.active?'':'opacity-60'}" style="${s.active?'':'opacity:0.5'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="sub-name">${s.name}</div>
+        <label style="cursor:pointer;font-size:11px;color:var(--ink3)">
+          <input type="checkbox" ${s.active?'checked':''} onchange="toggleSub(${i},this.checked)"> Active
+        </label>
+      </div>
+      <div class="sub-amount">${fmt(s.amount)}</div>
+      <div class="sub-freq">${s.frequency} · ${fmt(monthlyCost)}/mo</div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <span class="badge badge-sub">${s.frequency}</span>
+        <span class="badge badge-cat">${s.category}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-outline btn-sm" onclick="deleteSub(${i})">Remove</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('sub-grid').innerHTML = html;
+}
+
+function toggleSub(i, val) { subscriptions[i].active = val; save(); renderSubscriptions(); renderDashboard(); }
+function deleteSub(i) { subscriptions.splice(i, 1); save(); renderSubscriptions(); }
+
+// ── TRANSACTIONS ──────────────────────────────────────────────────────────
+// Build a reliable numeric timestamp from a transaction's date + time.
+// Pads single-digit hours (e.g. "0:18:00" -> "00:18:00") so the ISO
+// string is always valid and new Date() never returns NaN.
+function txnTs(t) {
+  const d = t.date || '';
+  if (!d) return 0;
+  let iso = d;
+  if (t.time) {
+    // pad H:MM:SS -> HH:MM:SS
+    const padded = t.time.replace(/^(\d):/, '0$1:');
+    iso += 'T' + padded;
+  }
+  const ts = Date.parse(iso);
+  return isNaN(ts) ? 0 : ts;
+}
+
+function renderTransactions() {
+  // Update cat filter options
+  const cats = [...new Set(transactions.map(t => t.category).filter(Boolean))].sort();
+  const cf = document.getElementById('cat-filter');
+  const cur = cf.value;
+  cf.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option ${c===cur?'selected':''}>${c}</option>`).join('');
+
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const cat = document.getElementById('cat-filter').value;
+  const type = document.getElementById('type-filter').value;
+
+  let filtered = transactions
+    .filter(t => !search || t.description?.toLowerCase().includes(search))
+    .filter(t => !cat || t.category === cat)
+    .filter(t => !type || t.type === type)
+    .sort((a,b) => txnTs(b) - txnTs(a));
+
+  document.getElementById('txn-count-label').textContent = `${filtered.length} transactions`;
+  document.getElementById('txn-table').innerHTML = filtered.length
+    ? buildTxnTable(filtered, true)
+    : '<div class="empty"><div class="empty-icon">≡</div><div class="empty-title">No transactions</div></div>';
+}
+
+function buildTxnTable(txns, editable=false) {
+  if (!txns.length) return '<p style="color:var(--ink3);font-size:13px;padding:12px">No transactions</p>';
+  let html = `<table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th style="text-align:right">Amount</th>${editable?'<th></th>':''}</tr></thead><tbody>`;
+  txns.forEach((t, i) => {
+    const sign = t.type==='expense' ? '-' : '+';
+    const cls = t.type==='expense' ? 'expense' : 'income';
+    const realIdx = transactions.indexOf(t);
+    html += `<tr>
+      <td style="color:var(--ink2);font-family:'DM Mono',monospace;font-size:12px">${t.date||''}${t.time?' <span style=\"opacity:0.5;font-size:11px\">'+t.time.slice(0,5)+'</span>':''}</td>
+      <td>${t.description||''}${t.subscription?` <span class="badge badge-sub" style="margin-left:4px">sub</span>`:''}  </td>
+      <td>${editable?`<select class="cat-select" onchange="changeCat(${realIdx},this.value)">${CATEGORIES.map(c=>`<option ${c===t.category?'selected':''}>${c}</option>`).join('')}</select>`:`<span class="badge badge-cat">${t.category||''}</span>`}</td>
+      <td class="amount-cell ${cls}">${sign}${fmt(t.amount)}</td>
+      ${editable?`<td><button class="btn btn-outline btn-sm" onclick="deleteTxn(${realIdx})" style="padding:2px 8px;font-size:11px">×</button></td>`:''}
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function changeCat(i, cat) { transactions[i].category = cat; save(); }
+function deleteTxn(i) { transactions.splice(i,1); save(); renderTransactions(); toast('Transaction removed'); }
+
+// ── IMPORT ────────────────────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+function handleFileSelect(e) { processFile(e.target.files[0]); }
+
+// Detect if headers match Banco Mercantil Santa Cruz format
+function isBancoMercantil(headers) {
+  const h = headers.map(x => x.toLowerCase());
+  return h.some(x => x.includes('fecha')) &&
+         h.some(x => x.includes('d\xe9bito') || x.includes('debito')) &&
+         h.some(x => x.includes('cr\xe9dito') || x.includes('credito')) &&
+         h.some(x => x.includes('glosa') || x.includes('descripci'));
+}
+
+// Build a human-readable description from a Banco Mercantil row.
+// Priority: Glosa (the memo the sender wrote) > Nombre Destinatario > Descripción
+function buildBMDescription(row) {
+  // Find keys case-insensitively
+  const get = (...hints) => {
+    const key = Object.keys(row).find(k => hints.some(h => k.toLowerCase().includes(h)));
+    return key ? String(row[key] || '').trim() : '';
+  };
+  const glosa = get('glosa');
+  const destName = get('nombre destinatario', 'destinatario');
+  const desc = get('descripci');
+  const depositante = get('nombre/denominaci', 'depositante');
+
+  // Prefer glosa if it's meaningful (not just a repeat of a bank code)
+  if (glosa && glosa.length > 3 && !/^\d+$/.test(glosa)) return glosa;
+  if (destName && destName.length > 3) return destName;
+  if (depositante && depositante.length > 3) return depositante;
+  // Fall back to first meaningful word(s) of Descripción
+  if (desc) {
+    // Strip leading keywords like "DEBITO TRANSFERENCIA ACH" to get the actual name
+    const cleaned = desc
+      .replace(/^(DEBITO|CREDITO)\s+/i, '')
+      .replace(/^TRANSFERENCIA\s+(ACH\s+)?/i, '')
+      .replace(/^COMPRA\s+(INTERNET\s+)?(EXT\s+)?/i, '')
+      .replace(/^INTERESES\s*-?\s*/i, 'Intereses ')
+      .replace(/^\d{6,}\s+/,'')  // strip leading account numbers
+      .trim();
+    // Take up to ~40 chars
+    return cleaned.length > 40 ? cleaned.slice(0,40) : cleaned;
+  }
+  return 'Transacción';
+}
+
+function importBancoMercantil(data) {
+  let added = 0;
+  // Read the last non-empty Saldo value as the real account balance
+  const saldoKey = Object.keys(data[0] || {}).find(k => k.toLowerCase().includes('saldo'));
+  if (saldoKey) {
+    const lastSaldo = [...data].reverse().find(row => {
+      const v = parseFloat(String(row[saldoKey]).replace(/[^0-9.]/g,''));
+      return !isNaN(v) && v > 0;
+    });
+    if (lastSaldo) bankBalance = parseFloat(String(lastSaldo[saldoKey]).replace(/[^0-9.]/g,''));
+  }
+  data.forEach(row => {
+    const getVal = (...hints) => {
+      const key = Object.keys(row).find(k => hints.some(h => k.toLowerCase().includes(h)));
+      return key ? String(row[key] || '').trim() : '';
+    };
+
+    const rawDate = getVal('fecha');
+    if (!rawDate) return;
+    const date = parseDate(rawDate);
+    const time = getVal('hora') || '';
+
+    // Débito = money going out (expense), Crédito = money coming in (income)
+    const debitoRaw = getVal('d\xe9bito', 'debito');
+    const creditoRaw = getVal('cr\xe9dito', 'credito');
+    const debito = parseFloat(String(debitoRaw).replace(/[^0-9.]/g,'')) || 0;
+    const credito = parseFloat(String(creditoRaw).replace(/[^0-9.]/g,'')) || 0;
+
+    if (debito === 0 && credito === 0) return;
+
+    const amount = debito > 0 ? debito : credito;
+    const type = debito > 0 ? 'expense' : 'income';
+    const description = buildBMDescription(row);
+
+    transactions.push({
+      id: Date.now() + Math.random(),
+      date, time, description, amount, type,
+      category: guessCategory(description),
+      subscription: false
+    });
+    added++;
+  });
+  return added;
+}
+
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv') {
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true,
+      // Use Latin-1 encoding — Banco Mercantil exports use accented chars (é, ó)
+      encoding: 'ISO-8859-1',
+      complete: r => {
+        rawFileData = r.data;
+        rawHeaders = r.meta.fields || [];
+        if (isBancoMercantil(rawHeaders)) {
+          // Auto-import — no mapping step needed
+          const added = importBancoMercantil(rawFileData);
+          save(); detectSubscriptions();
+          toast(`Imported ${added} transactions from Banco Mercantil`);
+          resetImport();
+          navigate('dashboard');
+        } else {
+          showMapper();
+        }
+      }
+    });
+  } else if (['xlsx','xls'].includes(ext)) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const wb = XLSX.read(ev.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, {defval:''});
+      rawFileData = data;
+      rawHeaders = data.length ? Object.keys(data[0]) : [];
+      if (isBancoMercantil(rawHeaders)) {
+        const added = importBancoMercantil(rawFileData);
+        save(); detectSubscriptions();
+        toast(`Imported ${added} transactions from Banco Mercantil`);
+        resetImport();
+        navigate('dashboard');
+      } else {
+        showMapper();
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    toast('Please upload a .csv or .xlsx file');
+  }
+}
+
+function showMapper() {
+  document.getElementById('preview-info').textContent = `${rawFileData.length} rows · ${rawHeaders.length} columns`;
+  document.getElementById('mapper-section').style.display = 'block';
+
+  const fields = [
+    { key:'date', label:'Date' },
+    { key:'description', label:'Description / Merchant' },
+    { key:'amount', label:'Amount' },
+    { key:'type', label:'Income/Expense (optional)' },
+  ];
+
+  const guess = (hints) => {
+    const h = rawHeaders.find(c => hints.some(h => c.toLowerCase().includes(h)));
+    return h || '';
+  };
+
+  const defaults = {
+    date: guess(['date','fecha','time','día']),
+    description: guess(['desc','merchant','concept','concepto','detail','nombre','name','glosa']),
+    amount: guess(['amount','monto','importe','value','valor','debit','credit','débito']),
+    type: guess(['type','tipo','in/out','debit','credit']),
+  };
+
+  let html = '';
+  fields.forEach(f => {
+    html += `<div class="mapper-label">${f.label}</div>
+      <div class="mapper-arrow">→</div>
+      <select class="mapper-select" id="map-${f.key}">
+        <option value="">— skip —</option>
+        ${rawHeaders.map(h=>`<option value="${h}" ${h===defaults[f.key]?'selected':''}>${h}</option>`).join('')}
+      </select>`;
+  });
+  document.getElementById('mapper-grid').innerHTML = html;
+}
+
+function importData() {
+  const mapDate = document.getElementById('map-date').value;
+  const mapDesc = document.getElementById('map-description').value;
+  const mapAmount = document.getElementById('map-amount').value;
+  const mapType = document.getElementById('map-type').value;
+
+  if (!mapDate || !mapDesc || !mapAmount) { toast('Please map Date, Description, and Amount'); return; }
+
+  let added = 0;
+  rawFileData.forEach(row => {
+    const rawAmt = row[mapAmount];
+    const amt = parseFloat(String(rawAmt).replace(/[^0-9.\-]/g,''));
+    if (isNaN(amt) || amt === 0) return;
+
+    let type = 'expense';
+    if (mapType) {
+      const tv = String(row[mapType]).toLowerCase();
+      if (tv.includes('credit') || tv.includes('income') || tv.includes('ingreso') || tv.includes('dep')) type = 'income';
+    } else {
+      type = amt < 0 ? 'expense' : 'income';
+    }
+
+    const finalAmt = Math.abs(amt);
+    const desc = String(row[mapDesc] || '').trim();
+    const rawDate = row[mapDate];
+    const date = parseDate(rawDate);
+
+    transactions.push({
+      id: Date.now() + Math.random(),
+      date, description: desc, amount: finalAmt, type,
+      category: guessCategory(desc),
+      subscription: false
+    });
+    added++;
+  });
+
+  save();
+  detectSubscriptions();
+  toast(`Imported ${added} transactions`);
+  resetImport();
+  navigate('dashboard');
+}
+
+function parseDate(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  // Try various formats
+  const patterns = [
+    /^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/, // YYYY-MM-DD
+    /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/, // DD/MM/YYYY or MM/DD/YYYY
+  ];
+  for (const p of patterns) {
+    const m = s.match(p);
+    if (m) {
+      // YYYY-M-D
+      if (m[1].length === 4) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+      // D/M/YYYY (assume DD/MM/YYYY for Bolivia)
+      return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    }
+  }
+  // Excel serial number
+  const n = parseFloat(s);
+  if (!isNaN(n) && n > 40000) {
+    const d = new Date((n - 25569) * 86400000);
+    if (!isNaN(d)) return d.toISOString().slice(0,10);
+  }
+  // Try native parse
+  const d = new Date(s);
+  return isNaN(d) ? s : d.toISOString().slice(0,10);
+}
+
+function guessCategory(desc) {
+  const d = desc.toLowerCase();
+  if (/netflix|spotify|amazon prime|disney|hbo|youtube|apple\s*tv|deezer|crunchyroll|tidal|disneyplus|paramount|max\.com/.test(d)) return 'Subscriptions';
+  if (/fitbite|megatlon|gym|crossfit|yoga|fitness|deporte|sport/.test(d)) return 'Health';
+  if (/farmacorp|farmacia|medic|doctor|salud|hospital|clinic|botica/.test(d)) return 'Health';
+  if (/ketal|hipermaxi|super tia|suertemercado|mr food|ema catering|tengo hambre|dia a dia|supermercado|mercado|grocery|bodega|tienda/.test(d)) return 'Food & groceries';
+  if (/restaur|pizza|burger|sushi|sandwich|comida|helad|bubble tea|starbucks|caf\u00e9|cafe|acai|grill|parrilla/.test(d)) return 'Food & groceries';
+  if (/uber|taxi|bus|trufi|micro|trans|gasolina|fuel|parking|autopista|ypfb|surtidor/.test(d)) return 'Transport';
+  if (/cine|movie|teatro|concert|entertain|juego|game/.test(d)) return 'Entertainment';
+  if (/entel|tigo|viva|internet|telefon|phone|electric|luz|agua|gas |utility|linkser/.test(d)) return 'Utilities';
+  if (/amazon|ebay|shopify|shop|compra|floreria|flores|ramos|venta de/.test(d)) return 'Shopping';
+  if (/uni|escuela|colegio|school|course|libro|book|educat|univalle/.test(d)) return 'Education';
+  return 'Other';
+}
+
+function resetImport() {
+  rawFileData = null; rawHeaders = [];
+  document.getElementById('mapper-section').style.display = 'none';
+  // Replace the file input entirely so the same file can be uploaded again
+  const old = document.getElementById('file-input');
+  const fresh = document.createElement('input');
+  fresh.type = 'file'; fresh.id = 'file-input';
+  fresh.accept = '.csv,.xlsx,.xls';
+  fresh.style.display = 'none';
+  fresh.onchange = e => handleFileSelect(e);
+  old.replaceWith(fresh);
+}
+
+// ── MANUAL ENTRY ──────────────────────────────────────────────────────────
+function addManualTransaction() {
+  const date = document.getElementById('m-date').value;
+  const desc = document.getElementById('m-desc').value.trim();
+  const amount = parseFloat(document.getElementById('m-amount').value);
+  const type = document.getElementById('m-type').value;
+  const cat = document.getElementById('m-cat').value;
+
+  if (!date || !desc || isNaN(amount) || amount <= 0) { toast('Please fill all fields'); return; }
+
+  transactions.push({ id: Date.now()+Math.random(), date, description: desc, amount, type, category: cat, subscription: false });
+  save(); detectSubscriptions();
+  toast('Transaction added');
+  document.getElementById('m-desc').value = '';
+  document.getElementById('m-amount').value = '';
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('mod-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('add-modal').classList.add('open');
+}
+function closeModal() { document.getElementById('add-modal').classList.remove('open'); }
+function addModalTransaction() {
+  const date = document.getElementById('mod-date').value;
+  const desc = document.getElementById('mod-desc').value.trim();
+  const amount = parseFloat(document.getElementById('mod-amount').value);
+  const type = document.getElementById('mod-type').value;
+  const cat = document.getElementById('mod-cat').value;
+  if (!date || !desc || isNaN(amount) || amount <= 0) { toast('Please fill all fields'); return; }
+  transactions.push({ id: Date.now()+Math.random(), date, description: desc, amount, type, category: cat, subscription: false });
+  save(); detectSubscriptions(); closeModal(); toast('Transaction added');
+  if (document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
+}
+
+// ── SUBSCRIPTION MODAL ────────────────────────────────────────────────────
+function openAddSubModal() {
+  document.getElementById('sub-name').value = '';
+  document.getElementById('sub-amount').value = '';
+  document.getElementById('add-sub-modal').classList.add('open');
+}
+function closeSubModal() { document.getElementById('add-sub-modal').classList.remove('open'); }
+function saveNewSub() {
+  const name = document.getElementById('sub-name').value.trim();
+  const amount = parseFloat(document.getElementById('sub-amount').value);
+  const frequency = document.getElementById('sub-freq').value;
+  const category = document.getElementById('sub-cat').value;
+  if (!name || isNaN(amount) || amount <= 0) { toast('Please fill name and amount'); return; }
+  subscriptions.push({ id: Date.now()+Math.random(), name, amount, frequency, active: true, category, auto: false });
+  save(); closeSubModal(); renderSubscriptions(); renderDashboard();
+  toast('Subscription added');
+}
+
+// ── CLEAR TRANSACTIONS ─────────────────────────────────────────────────────
+function clearAllTransactions() { document.getElementById('confirm-clear-modal').classList.add('open'); }
+function closeClearModal() { document.getElementById('confirm-clear-modal').classList.remove('open'); }
+function confirmClear() {
+  transactions = [];
+  subscriptions = [];
+  bankBalance = null;
+  try {
+    localStorage.removeItem('mf_transactions');
+    localStorage.removeItem('mf_subscriptions');
+    localStorage.removeItem('mf_bank_balance');
+  } catch(e) {}
+  closeClearModal();
+  resetImport();
+  renderTransactions();
+  renderDashboard();
+  renderSubscriptions();
+  toast('All data cleared');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+load();
+if (!transactions.length) {
+  // Demo data for Bolivia
+  const demo = [
+    {date:'2026-03-01',description:'Netflix',amount:72,type:'expense',category:'Subscriptions'},
+    {date:'2026-03-01',description:'Spotify',amount:36,type:'expense',category:'Subscriptions'},
+    {date:'2026-03-05',description:'Ketal Supermercado',amount:340,type:'expense',category:'Food & groceries'},
+    {date:'2026-03-07',description:'Entel Internet',amount:120,type:'expense',category:'Utilities'},
+    {date:'2026-03-10',description:'Uber',amount:45,type:'expense',category:'Transport'},
+    {date:'2026-03-10',description:'Salario',amount:4500,type:'income',category:'Other'},
+    {date:'2026-03-12',description:'Hipermaxi',amount:280,type:'expense',category:'Food & groceries'},
+    {date:'2026-03-15',description:'Amazon Prime',amount:58,type:'expense',category:'Subscriptions'},
+    {date:'2026-03-18',description:'Farmacia',amount:95,type:'expense',category:'Health'},
+    {date:'2026-03-20',description:'Cine Center',amount:60,type:'expense',category:'Entertainment'},
+    {date:'2026-03-22',description:'Gasolina',amount:130,type:'expense',category:'Transport'},
+    {date:'2026-03-25',description:'Restaurante',amount:85,type:'expense',category:'Food & groceries'},
+    {date:'2026-02-01',description:'Netflix',amount:72,type:'expense',category:'Subscriptions'},
+    {date:'2026-02-01',description:'Spotify',amount:36,type:'expense',category:'Subscriptions'},
+    {date:'2026-02-10',description:'Salario',amount:4500,type:'income',category:'Other'},
+    {date:'2026-02-08',description:'Ketal Supermercado',amount:310,type:'expense',category:'Food & groceries'},
+    {date:'2026-02-12',description:'Entel Internet',amount:120,type:'expense',category:'Utilities'},
+    {date:'2026-02-14',description:'Uber',amount:38,type:'expense',category:'Transport'},
+    {date:'2026-02-20',description:'Amazon Prime',amount:58,type:'expense',category:'Subscriptions'},
+    {date:'2026-01-01',description:'Netflix',amount:72,type:'expense',category:'Subscriptions'},
+    {date:'2026-01-01',description:'Spotify',amount:36,type:'expense',category:'Subscriptions'},
+    {date:'2026-01-10',description:'Salario',amount:4500,type:'income',category:'Other'},
+    {date:'2026-01-15',description:'Amazon Prime',amount:58,type:'expense',category:'Subscriptions'},
+    {date:'2026-01-18',description:'Ketal Supermercado',amount:295,type:'expense',category:'Food & groceries'},
+  ];
+  demo.forEach((t,i) => { t.id = i+1; t.subscription = false; });
+  transactions = demo;
+  save();
+}
+
+detectSubscriptions();
+renderDashboard();
+document.getElementById('m-date').value = new Date().toISOString().slice(0,10);
+</script>
+</body>
+</html>
