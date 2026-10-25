@@ -47,9 +47,9 @@
   .tab.active{background:#fff;color:#000;border-color:#fff;}
   .tab .today-dot{position:absolute;top:4px;right:6px;width:4px;height:4px;border-radius:2px;background:currentColor;}
 
-  main{padding-top:18px;padding-bottom:calc(150px + env(safe-area-inset-bottom));}
+  main.wrap{padding-top:22px;padding-bottom:calc(var(--dock-h, 170px) + 60px);}
   .day-title{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px;font-weight:600;}
-  .day-progress{font-size:13px;color:var(--faint);margin:0 0 16px;}
+  .day-progress{font-size:13px;color:var(--faint);margin:0 0 18px;}
 
   /* Cards */
   .card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px;background:var(--surface);transition:border-color .15s;}
@@ -127,10 +127,11 @@
   .sc-note{font-size:11.5px;color:var(--faint);margin-top:2px;}
 
   /* Sheet */
-  .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:none;}
+  .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:none;touch-action:none;}
+  body.locked{position:fixed;left:0;right:0;overflow:hidden;}
   .sheet-bg.open{display:block;}
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;background:#0b0b0b;border-top:1px solid var(--line);border-radius:20px 20px 0 0;
-    max-height:88vh;overflow-y:auto;padding:8px 0 calc(24px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .25s ease;}
+    max-height:88vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:8px 0 calc(24px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .25s ease;}
   .sheet.open{transform:none;}
   .grab{width:36px;height:5px;border-radius:3px;background:var(--line-strong);margin:4px auto 14px;}
   .sheet h2{font-size:22px;margin:0 0 14px;letter-spacing:-0.01em;}
@@ -712,9 +713,22 @@ function openSheet(){
   $('opt-sound').checked = !!state.prefs.sound;
   $('opt-wake').checked = !!state.prefs.wake;
   $('backup-msg').textContent = '';
+  lockScroll();
   $('sheet-bg').classList.add('open'); $('sheet').classList.add('open');
 }
-function closeSheet(){ $('sheet-bg').classList.remove('open'); $('sheet').classList.remove('open'); disarmReset(); }
+let lockedY = 0;
+function lockScroll(){
+  lockedY = window.scrollY;
+  document.body.style.top = -lockedY + 'px';
+  document.body.classList.add('locked');
+}
+function unlockScroll(){
+  if (!document.body.classList.contains('locked')) return;
+  document.body.classList.remove('locked');
+  document.body.style.top = '';
+  window.scrollTo(0, lockedY);
+}
+function closeSheet(){ $('sheet-bg').classList.remove('open'); $('sheet').classList.remove('open'); disarmReset(); unlockScroll(); }
 $('menu-btn').addEventListener('click', openSheet);
 $('close-sheet').addEventListener('click', closeSheet);
 $('sheet-bg').addEventListener('click', closeSheet);
@@ -780,6 +794,15 @@ $('reset-btn').addEventListener('click', () => {
   state.draft = {}; ALL.forEach(e => state.draft[e.id] = freshDraft(e)); persistDrafts();
   disarmReset(); renderDay(); toast('History erased');
 });
+
+/* Keep enough scroll room below the last card for the timer bar */
+function syncDockSpace(){
+  const h = $('dock').getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--dock-h', Math.ceil(h) + 'px');
+}
+window.addEventListener('resize', syncDockSpace);
+if ('ResizeObserver' in window) new ResizeObserver(syncDockSpace).observe($('dock'));
+syncDockSpace();
 
 /* ===================== TOAST ===================== */
 let toastT = null;
